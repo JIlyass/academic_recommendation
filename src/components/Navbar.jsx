@@ -31,10 +31,10 @@ export default function Navbar() {
             </Link>
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" asChild>
-                <Link to="/login">Login</Link>
+                <Link to="/AuthPage">Login</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link to="/signup">Sign in</Link>
+                <Link to="/AuthPage">Sign in</Link>
               </Button>
             </div>
           </div>
@@ -68,10 +68,10 @@ export default function Navbar() {
             </Link>
             <div className="flex gap-2 px-4">
               <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
-                <Link to="/login">Login</Link>
+                <Link to="/AuthPage">Login</Link>
               </Button>
               <Button size="sm" className="flex-1" asChild>
-                <Link to="/signup">Sign in</Link>
+                <Link to="/AuthPage">Sign in</Link>
               </Button>
             </div>
           </div>
