@@ -29,14 +29,14 @@ export default function Navbar() {
             <Link to="/predict" className="text-sm font-medium text-foreground transition-colors hover:text-primary">
               Predict your speciality with AI
             </Link>
-            <div className="flex items-center gap-3">
+            {/* <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/AuthPage">Login</Link>
               </Button>
               <Button size="sm" asChild>
                 <Link to="/AuthPage">Sign in</Link>
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -66,14 +66,14 @@ export default function Navbar() {
             >
               Predict your specialty by IA
             </Link>
-            <div className="flex gap-2 px-4">
+            {/* <div className="flex gap-2 px-4">
               <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
                 <Link to="/AuthPage">Login</Link>
               </Button>
               <Button size="sm" className="flex-1" asChild>
                 <Link to="/AuthPage">Sign in</Link>
               </Button>
-            </div>
+            </div> */}
           </div>
         )}
       </div>

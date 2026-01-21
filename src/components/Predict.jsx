@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Trash2, Upload, Loader2 } from "lucide-react"
+import { Trash2, Loader2 } from "lucide-react"
 
 const API_URL = "https://academicrecommendationapi-production.up.railway.app"
 
@@ -25,9 +25,12 @@ export default function Predict() {
   const [result, setResult] = useState(null)
   const [showResult, setShowResult] = useState(false)
 
-  // Vérifier si tous les champs sont remplis
+  // Vérifier si tous les champs sont remplis et valides
   const isFormComplete = grades.length === ALL_SUBJECTS.length && 
-    grades.every(g => g.score !== "" && !isNaN(parseFloat(g.score)))
+    grades.every(g => {
+      const score = parseFloat(g.score)
+      return g.score !== "" && !isNaN(score) && score >= 0 && score <= 20
+    })
 
   const addGrade = () => {
     if (availableSubjects.length === 0) return
@@ -66,12 +69,22 @@ export default function Predict() {
       setAvailableSubjects(availableSubjects.filter(s => s.value !== value))
     }
     
+    // Validation pour le score
+    if (field === "score") {
+      const numValue = parseFloat(value)
+      // Accepter les valeurs vides ou entre 0 et 20
+      if (value === "" || (numValue >= 0 && numValue <= 20)) {
+        setGrades(grades.map((g) => (g.id === id ? { ...g, [field]: value } : g)))
+      }
+      return
+    }
+    
     setGrades(grades.map((g) => (g.id === id ? { ...g, [field]: value } : g)))
   }
 
   const handleSubmit = async () => {
     if (!isFormComplete) {
-      alert("Veuillez remplir toutes les notes pour toutes les matières")
+      alert("Veuillez remplir toutes les notes pour toutes les matières (entre 0 et 20)")
       return
     }
 
@@ -123,35 +136,20 @@ export default function Predict() {
     setShowResult(false)
   }
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    e.currentTarget.classList.add("border-primary/50", "bg-primary/5")
-  }
-
-  const handleDragLeave = (e) => {
-    e.currentTarget.classList.remove("border-primary/50", "bg-primary/5")
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    e.currentTarget.classList.remove("border-primary/50", "bg-primary/5")
-    // Handle file drop here
-  }
-
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground">Import your marks!</h1>
-          <Button variant="outline" className="w-fit bg-transparent">
+          {/* <Button variant="outline" className="w-fit bg-transparent">
             Import struct
-          </Button>
+          </Button> */}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Section - Grades Table */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
               {/* Progress Indicator */}
               <div className="mb-4 p-3 bg-muted rounded">
@@ -172,47 +170,61 @@ export default function Predict() {
               {/* Table Body */}
               {grades.length > 0 ? (
                 <div className="space-y-3 mb-6">
-                  {grades.map((grade) => (
-                    <div key={grade.id} className="grid grid-cols-12 gap-4 items-center">
-                      <select
-                        value={grade.subject}
-                        onChange={(e) => updateGrade(grade.id, "subject", e.target.value)}
-                        className="col-span-5 px-3 py-2 bg-input border border-border rounded text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      >
-                        <option value="">Sélectionner une matière</option>
-                        {grade.subject && (
-                          <option value={grade.subject}>
-                            {ALL_SUBJECTS.find(s => s.value === grade.subject)?.label}
-                          </option>
-                        )}
-                        {availableSubjects.map((subject) => (
-                          <option key={subject.value} value={subject.value}>
-                            {subject.label}
-                          </option>
-                        ))}
-                      </select>
-                      
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="20"
-                        value={grade.score}
-                        onChange={(e) => updateGrade(grade.id, "score", e.target.value)}
-                        placeholder="0.00"
-                        disabled={!grade.subject}
-                        className="col-span-4 px-3 py-2 bg-input border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                      
-                      <button
-                        onClick={() => deleteGrade(grade.id)}
-                        className="col-span-3 inline-flex items-center justify-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/10 rounded transition-colors"
-                      >
-                        <Trash2 size={16} />
-                        <span>Del</span>
-                      </button>
-                    </div>
-                  ))}
+                  {grades.map((grade) => {
+                    const score = parseFloat(grade.score)
+                    const isInvalidScore = grade.score !== "" && (isNaN(score) || score < 0 || score > 20)
+                    
+                    return (
+                      <div key={grade.id} className="grid grid-cols-12 gap-4 items-center">
+                        <select
+                          value={grade.subject}
+                          onChange={(e) => updateGrade(grade.id, "subject", e.target.value)}
+                          className="col-span-5 px-3 py-2 bg-input border border-border rounded text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                          <option value="">Sélectionner une matière</option>
+                          {grade.subject && (
+                            <option value={grade.subject}>
+                              {ALL_SUBJECTS.find(s => s.value === grade.subject)?.label}
+                            </option>
+                          )}
+                          {availableSubjects.map((subject) => (
+                            <option key={subject.value} value={subject.value}>
+                              {subject.label}
+                            </option>
+                          ))}
+                        </select>
+                        
+                        <div className="col-span-4">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="20"
+                            value={grade.score}
+                            onChange={(e) => updateGrade(grade.id, "score", e.target.value)}
+                            placeholder="0.00"
+                            disabled={!grade.subject}
+                            className={`w-full px-3 py-2 bg-input border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isInvalidScore 
+                                ? 'border-red-500 focus:ring-red-500' 
+                                : 'border-border focus:ring-primary/50'
+                            }`}
+                          />
+                          {isInvalidScore && (
+                            <p className="text-xs text-red-500 mt-1">Note entre 0 et 20</p>
+                          )}
+                        </div>
+                        
+                        <button
+                          onClick={() => deleteGrade(grade.id)}
+                          className="col-span-3 inline-flex items-center justify-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        >
+                          <Trash2 size={16} />
+                          <span>Del</span>
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
@@ -250,44 +262,33 @@ export default function Predict() {
                 <p className="text-sm text-muted-foreground text-center mt-3">
                   {grades.length < ALL_SUBJECTS.length 
                     ? `Ajoutez encore ${ALL_SUBJECTS.length - grades.length} matière(s)` 
-                    : 'Remplissez toutes les notes pour continuer'}
+                    : 'Remplissez toutes les notes (entre 0 et 20) pour continuer'}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Right Section - Drag Drop & Features */}
+          {/* Right Section - Features */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Drag Drop Area */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className="border-2 border-dashed border-border rounded-lg p-8 text-center transition-all duration-200 cursor-pointer hover:border-primary/50 bg-muted/30"
-            >
-              <Upload className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-              <h3 className="text-2xl font-bold text-foreground mb-2">Drag Drop</h3>
-              <p className="text-sm text-muted-foreground">Drop your files here</p>
-            </div>
-
             {/* Features List */}
-            <div className="space-y-3">
-              <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+            <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-foreground mb-4">À propos</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground leading-relaxed">
                 <li className="flex gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Analyzes student grades and performance patterns across subjects.</span>
+                  <span>Analyse vos notes et identifie vos points forts.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Matches academic strengths to suitable majors using rules + ML ranking.</span>
+                  <span>Recommande les filières les plus adaptées à votre profil.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Outputs top major recommendations with confidence scores.</span>
+                  <span>Fournit un score de confiance pour chaque recommandation.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Explains each recommendation based on key subjects and trends.</span>
+                  <span>Basé sur un modèle d'apprentissage automatique entraîné.</span>
                 </li>
               </ul>
             </div>
