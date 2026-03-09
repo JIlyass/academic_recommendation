@@ -1,0 +1,22 @@
+apiVersion: v1             # Version de l'API pour les Services
+kind: Service              # Type : expose les pods à l'extérieur ou en interne
+metadata:
+  name: academic-recommendation-service   # Nom du service
+  namespace: default
+
+spec:
+  type: NodePort           # Type d'exposition :
+                           #   ClusterIP  = interne seulement
+                           #   NodePort   = accessible depuis ton PC (local)
+                           #   LoadBalancer = cloud (AWS, GCP...)
+  
+  selector:
+    app: academic-recommendation   # Redirige vers les pods avec ce label
+                                   # ⚠️ doit correspondre au label du Deployment
+  
+  ports:
+    - protocol: TCP
+      port: 80             # Port du Service (interne au cluster)
+      targetPort: 80       # Port du container (nginx écoute sur 80)
+      nodePort: 30080      # Port accessible depuis ton navigateur
+                           # → http://localhost:30080

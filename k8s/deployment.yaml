@@ -1,0 +1,51 @@
+apiVersion: apps/v1        # Version de l'API Kubernetes pour les Deployments
+kind: Deployment           # Type d'objet : gère le cycle de vie des pods
+metadata:
+  name: academic-recommendation-deployment   # Nom du déploiement
+  namespace: default                          # Namespace (espace de travail)
+  labels:
+    app: academic-recommendation             # Label pour identifier l'app
+
+spec:
+  replicas: 2              # Nombre de copies (pods) qui tournent en parallèle
+  
+  selector:
+    matchLabels:
+      app: academic-recommendation   # Sélectionne les pods avec ce label
+
+  template:                # Template = modèle pour créer les pods
+    metadata:
+      labels:
+        app: academic-recommendation
+    
+    spec:
+      containers:
+        - name: academic-recommendation          # Nom du container dans le pod
+          image: jilyass/academic_recommendation:latest  # Image Docker Hub
+          imagePullPolicy: Always               # Toujours télécharger la dernière image
+          
+          ports:
+            - containerPort: 80                 # Port exposé par le container (nginx)
+          
+          resources:
+            requests:                           # Minimum garanti
+              memory: "64Mi"
+              cpu: "100m"                       # 100m = 0.1 CPU
+            limits:                             # Maximum autorisé
+              memory: "128Mi"
+              cpu: "200m"
+          
+          # Vérification que le container est vivant
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+  # Stratégie de mise à jour : remplace progressivement sans downtime
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1    # Max 1 pod hors service pendant la mise à jour
+      maxSurge: 1          # Max 1 pod supplémentaire créé pendant la mise à jour
