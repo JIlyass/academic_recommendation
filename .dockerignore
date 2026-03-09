@@ -1,0 +1,33 @@
+# Dépendances
+node_modules
+npm-debug.log*
+
+# Build output
+dist
+build
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+Jenkinsfile
+.vscode
+.idea
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage
