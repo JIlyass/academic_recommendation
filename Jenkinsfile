@@ -1,7 +1,7 @@
 pipeline {
     agent any
     tools {
-      nodejs 'NodeJS-20'   // ← dis à Jenkins d'utiliser Node
+      nodejs 'NodeJS-18'   // ← dis à Jenkins d'utiliser Node
     }
     /*─────────────────────────────────────────────────
       Variables globales
