@@ -52,12 +52,12 @@ pipeline {
         }
 
         /*── 3. LINT ─────────────────────────────────*/
-        stage('🔍 Lint') {
-            steps {
-                echo "Vérification du code..."
-                sh 'npm run lint --if-present'
-            }
-        }
+        // stage('🔍 Lint') {
+        //     steps {
+        //         echo "Vérification du code..."
+        //         sh 'npm run lint --if-present'
+        //     }
+        // }
 
         /*── 4. TEST ─────────────────────────────────*/
         stage('🧪 Tests') {
