@@ -1,30 +1,18 @@
 pipeline {
     agent any
-    tools {
-      nodejs 'NodeJS-18'   // ← dis à Jenkins d'utiliser Node
-    }
-    /*─────────────────────────────────────────────────
-      Variables globales
-    ─────────────────────────────────────────────────*/
+
     environment {
         APP_NAME        = "academic_recommendation"
         DOCKERHUB_USER  = "jilyass"
         IMAGE_NAME      = "${DOCKERHUB_USER}/${APP_NAME}"
-        IMAGE_TAG       = "${BUILD_NUMBER}"          // ex: 42
+        IMAGE_TAG       = "${BUILD_NUMBER}"
         IMAGE_LATEST    = "${IMAGE_NAME}:latest"
         IMAGE_VERSIONED = "${IMAGE_NAME}:${IMAGE_TAG}"
-
-        // Credential ID configuré dans Jenkins → Manage Credentials
         DOCKERHUB_CREDS = credentials('dockerhub-credentials')
-
-        // Namespace Kubernetes local (minikube / kind / Docker Desktop)
         K8S_NAMESPACE   = "default"
-        K8S_DEPLOYMENT  = "${APP_NAME}-deployment"
+        K8S_DEPLOYMENT  = "academic-recommendation-deployment"
     }
 
-    /*─────────────────────────────────────────────────
-      Options
-    ─────────────────────────────────────────────────*/
     options {
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -33,80 +21,41 @@ pipeline {
 
     stages {
 
-        /*── 1. CHECKOUT ──────────────────────────────*/
-        stage('📥 Checkout') {
+        stage('Checkout') {
+            // Jenkins clone automatiquement ton repo GitHub
+            // scm = Source Control Management = la config GitHub du job
             steps {
-                echo "Clonage du repo..."
+                echo "Clonage du repo depuis GitHub..."
                 checkout scm
             }
         }
 
-        /*── 2. INSTALL ──────────────────────────────*/
-        stage('📦 Install Dependencies') {
+        stage('Build Docker Image') {
+            // Docker build lit ton Dockerfile
+            // Il fait npm install + npm run build DANS le container
+            // Pas besoin de Node sur Jenkins
             steps {
-                echo "Installation des dépendances Node..."
-                sh 'node --version'
-                sh 'npm --version'
-                sh 'npm ci'
-            }
-        }
-
-        /*── 3. LINT ─────────────────────────────────*/
-        // stage('🔍 Lint') {
-        //     steps {
-        //         echo "Vérification du code..."
-        //         sh 'npm run lint --if-present'
-        //     }
-        // }
-
-        /*── 4. TEST ─────────────────────────────────*/
-        stage('🧪 Tests') {
-            steps {
-                echo "Lancement des tests..."
-                // Vitest / Jest — adapte si nécessaire
-                sh 'npm test -- --run --reporter=verbose 2>/dev/null || npm test -- --watchAll=false 2>/dev/null || echo "Aucun test configuré, étape ignorée."'
-            }
-            post {
-                always {
-                    // Publier les résultats JUnit si dispo
-                    junit allowEmptyResults: true, testResults: '**/test-results/**/*.xml'
-                }
-            }
-        }
-
-        /*── 5. BUILD VITE ───────────────────────────*/
-        stage('⚙️ Build Vite') {
-            steps {
-                echo "Build de l'application React/Vite..."
-                sh 'npm run build'
-                echo "✅ Dossier dist/ généré."
-            }
-        }
-
-        /*── 6. BUILD DOCKER IMAGE ───────────────────*/
-        stage('🐳 Build Docker Image') {
-            steps {
-                echo "Construction de l'image Docker..."
+                echo "Construction de l image Docker..."
                 sh """
                     docker build \
-                        --tag ${IMAGE_VERSIONED} \
-                        --tag ${IMAGE_LATEST} \
-                        --label "build=${BUILD_NUMBER}" \
-                        --label "commit=${GIT_COMMIT}" \
+                        -t ${IMAGE_VERSIONED} \
+                        -t ${IMAGE_LATEST} \
                         .
                 """
                 sh "docker images | grep ${APP_NAME}"
             }
         }
 
-        /*── 7. PUSH DOCKER HUB ──────────────────────*/
-        stage('🚀 Push to Docker Hub') {
+        stage('Push to Docker Hub') {
+            // DOCKERHUB_CREDS_USR = username extrait automatiquement
+            // DOCKERHUB_CREDS_PSW = password extrait automatiquement
+            // Jenkins fait ça automatiquement avec credentials()
             steps {
                 echo "Push vers Docker Hub..."
                 sh "echo ${DOCKERHUB_CREDS_PSW} | docker login -u ${DOCKERHUB_CREDS_USR} --password-stdin"
                 sh "docker push ${IMAGE_VERSIONED}"
                 sh "docker push ${IMAGE_LATEST}"
-                echo "✅ Image poussée : ${IMAGE_VERSIONED}"
+                echo "Image poussée : ${IMAGE_VERSIONED}"
             }
             post {
                 always {
@@ -115,53 +64,36 @@ pipeline {
             }
         }
 
-        /*── 8. DEPLOY KUBERNETES (local) ────────────*/
-        stage('☸️ Deploy to Kubernetes (local)') {
+        stage('Deploy to Kubernetes') {
+            // kubectl apply lit tes fichiers k8s/
+            // Il met à jour le deployment sur le cluster
+            // kubectl set image met à jour l image avec le nouveau tag
             steps {
-                echo "Déploiement sur Kubernetes local..."
-
-                // Appliquer les manifests s'ils existent
-                sh """
-                    if [ -d k8s ]; then
-                        kubectl apply -f k8s/ --namespace=${K8S_NAMESPACE}
-                    else
-                        echo "⚠️  Dossier k8s/ non trouvé, utilisation de kubectl set image"
-                    fi
-                """
-
-                // Mise à jour de l'image dans le déploiement existant
+                echo "Déploiement sur Kubernetes..."
+                sh "kubectl apply -f k8s/ --namespace=${K8S_NAMESPACE}"
                 sh """
                     kubectl set image deployment/${K8S_DEPLOYMENT} \
-                        ${APP_NAME}=${IMAGE_VERSIONED} \
-                        --namespace=${K8S_NAMESPACE} \
-                    || echo "ℹ️  Déploiement introuvable, applique les manifests k8s/ d'abord."
+                        academic-recommendation=${IMAGE_VERSIONED} \
+                        --namespace=${K8S_NAMESPACE}
                 """
-
-                // Attendre que le rollout soit terminé
                 sh """
                     kubectl rollout status deployment/${K8S_DEPLOYMENT} \
                         --namespace=${K8S_NAMESPACE} \
-                        --timeout=120s \
-                    || true
+                        --timeout=120s
                 """
-
-                echo "✅ Déploiement terminé."
+                echo "Déploiement terminé."
             }
         }
     }
 
-    /*─────────────────────────────────────────────────
-      Notifications post-pipeline
-    ─────────────────────────────────────────────────*/
     post {
         success {
-            echo "🎉 Pipeline réussi ! Image : ${IMAGE_VERSIONED}"
+            echo "Pipeline réussi ! Image : ${IMAGE_VERSIONED}"
         }
         failure {
-            echo "❌ Pipeline échoué. Consulte les logs ci-dessus."
+            echo "Pipeline échoué. Consulte les logs."
         }
         always {
-            // Nettoyer les images locales pour libérer de l'espace
             sh "docker rmi ${IMAGE_VERSIONED} ${IMAGE_LATEST} 2>/dev/null || true"
             cleanWs()
         }
